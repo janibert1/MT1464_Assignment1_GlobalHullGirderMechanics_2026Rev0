@@ -32,24 +32,6 @@ def pick_tp_eq_mm(f_digit: int) -> float:
     return 7.5 if f_digit <= 4 else 8.5
 
 
-def pick_material(e_digit: int):
-    if e_digit <= 4:
-        return {
-            "name": "staal S235J2",
-            "sigma_y_MPa": 235.0,
-            "E_MPa": 205000.0,
-            "nu": 0.3,
-            "rho": 7800.0,
-        }
-    return {
-        "name": "staal S355J2",
-        "sigma_y_MPa": 355.0,
-        "E_MPa": 205000.0,
-        "nu": 0.3,
-        "rho": 7800.0,
-    }
-
-
 def moonpool(g_digit: int, L: float):
     if g_digit in [0, 1]:
         xm = 72.92
@@ -98,7 +80,7 @@ def draw_multiplot_svg(filename: Path, x, series, labels, colors):
         for k, y in enumerate(series):
             y0 = margin_t + k * panel_h
             ymin, ymax = min(y), max(y)
-            if ymax - ymin < 1e-12:
+            if ymax - ymin < 1e-9:
                 ymax = ymin + 1.0
 
             def ymap(yv):
@@ -108,17 +90,19 @@ def draw_multiplot_svg(filename: Path, x, series, labels, colors):
             pts = " ".join(f"{xmap(xi):.2f},{ymap(yi):.2f}" for xi, yi in zip(x, y))
             f.write(f'<polyline points="{pts}" fill="none" stroke="{colors[k%len(colors)]}" stroke-width="1.2"/>\n')
             f.write(f'<text x="{margin_l+5}" y="{y0+24}" class="title">{labels[k]}</text>\n')
-            f.write(f'<text x="10" y="{y0+24}">min {ymin:.3f}</text>\n')
-            f.write(f'<text x="10" y="{y0+40}">max {ymax:.3f}</text>\n')
+            f.write(f'<text x="10" y="{y0+24}">min {ymin:.2f}</text>\n')
+            f.write(f'<text x="10" y="{y0+40}">max {ymax:.2f}</text>\n')
         f.write('</svg>\n')
 
 
+
+
 def apply_point_moment_jump(moment_curve, x, x0, delta_m):
+    """Add a step (jump) in bending moment at x0 representing a concentrated moment."""
     out = []
     for xi, mi in zip(x, moment_curve):
         out.append(mi + (delta_m if xi >= x0 else 0.0))
     return out
-
 
 def digits_from_studienummer(studienummer: str):
     s = ''.join(ch for ch in str(studienummer) if ch.isdigit())
@@ -172,9 +156,10 @@ def solve_q1(digits, output_dir: Path):
     Fs = cumulative_integral(q, x)
     Mb = cumulative_integral(Fs, x)
 
-    crane_reach = 30.0
-    crane_swl = 1.5
-    crane_moment = crane_swl * crane_reach
+    # Crane-induced concentrated moment at crane location (requested jump in Mb).
+    crane_reach = 30.0  # [m], from assignment text
+    crane_swl = 1.5     # [MN], from assignment text
+    crane_moment = crane_swl * crane_reach  # [MNm]
     Mb = apply_point_moment_jump(Mb, x, crane_x, crane_moment)
 
     beff_n = [B] * n
@@ -193,6 +178,7 @@ def solve_q1(digits, output_dir: Path):
                        [W, c, gnet, buoy, q, Fs, Mb],
                        ['W(x) [MN/m]', 'c(x) [MN/m]', 'g(x) [MN/m]', 'p(x) [MN/m]', 'q(x) [MN/m]', 'Fs(x) [MN]', 'Mb(x) [MNm]'],
                        ['#0055aa', '#aa5500', '#228833', '#9933cc', '#cc2222', '#006666', '#444444'])
+
     draw_multiplot_svg(output_dir / 'q1f_compare.svg', x,
                        [Fs, Fs_n, Mb, Mb_n],
                        ['Fs met moonpool [MN]', 'Fs zonder moonpool [MN]', 'Mb met moonpool [MNm]', 'Mb zonder moonpool [MNm]'],
@@ -213,6 +199,8 @@ def solve_q1(digits, output_dir: Path):
 
     dFs_err = [abs(((Fs[i + 1] - Fs[i]) / (x[i + 1] - x[i])) - q[i]) for i in range(n - 1) if smooth_idx(i)]
     dMb_err = [abs(((Mb[i + 1] - Mb[i]) / (x[i + 1] - x[i])) - Fs[i]) for i in range(n - 1) if smooth_idx(i)]
+    max_dFs = max(dFs_err) if dFs_err else 0.0
+    max_dMb = max(dMb_err) if dMb_err else 0.0
 
     with (output_dir / 'check_q1a_f.md').open('w') as f:
         f.write('# Check vraag 1a t/m 1f\n\n')
@@ -220,8 +208,9 @@ def solve_q1(digits, output_dir: Path):
         f.write(f'- T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta={ta:.2f} m, tf={tf:.2f} m.\n')
         f.write(f'- Evenwicht: ∫qdx={eq_force:.3e} MN; ∫(x-LCF)qdx={eq_moment:.3e} MNm.\n')
         f.write(f'- Randvoorwaarden: Fs(0)={Fs[0]:.3e}, Mb(0)={Mb[0]:.3e}, Fs(L)={Fs[-1]:.3e}, Mb(L)={Mb[-1]:.3e}.\n')
-        f.write(f'- Afgeleide checks: max|dFs/dx-q|={max(dFs_err):.3e}, max|dMb/dx-Fs|={max(dMb_err):.3e}.\n')
-        f.write(f'- Moonpool effect: max|Fs_met-Fs_zonder|={max(abs(Fs[i]-Fs_n[i]) for i in range(n)):.3f} MN; max|Mb_met-Mb_zonder|={max(abs(Mb[i]-Mb_n[i]) for i in range(n)):.3f} MNm.\n')
+        f.write(f'- Afgeleide checks: max|dFs/dx-q|={max_dFs:.3e}, max|dMb/dx-Fs|={max_dMb:.3e}.\n')
+        f.write(f'- Moonpool effect: max|Fs_met-Fs_zonder|={max(abs(Fs[i]-Fs_n[i]) for i in range(n)):.3f} MN; '
+                f'max|Mb_met-Mb_zonder|={max(abs(Mb[i]-Mb_n[i]) for i in range(n)):.3f} MNm.\n')
         f.write(f'- Kraanmoment-jump in Mb op x={crane_x:.2f} m: +{crane_moment:.2f} MNm.\n')
 
     with (output_dir / 'answer_q1a_g.md').open('w') as f:
@@ -232,14 +221,6 @@ def solve_q1(digits, output_dir: Path):
         f.write(f"- Evenwichtcheck: ∫qdx={eq_force:.3e} MN, ∫(x-LCF)qdx={eq_moment:.3e} MNm.\n")
         f.write(f"- Randvoorwaardencheck: Fs(L)={Fs[-1]:.3e} MN, Mb(L)={Mb[-1]:.3e} MNm.\n")
         f.write(f"- Toegepaste kraan-geïnduceerde moment-jump bij x={crane_x:.2f} m: +{crane_moment:.2f} MNm.\n")
-
-    return {
-        "x": x,
-        "Fs": Fs,
-        "Mb": Mb,
-        "params": p,
-        "crane_x": crane_x,
-    }
 
 
 def solve_q2(digits, output_dir: Path):
@@ -260,6 +241,7 @@ def solve_q2(digits, output_dir: Path):
     I_h_total_each = I_h_own + I_h_shift
 
     I_v_own = t_v * H ** 3 / 12
+    I_v_shift = 0.0
     I_v_total_each = I_v_own
 
     Ib = 2 * I_h_total_each + 4 * I_v_total_each
@@ -268,12 +250,16 @@ def solve_q2(digits, output_dir: Path):
         f.write('# Uitwerking vraag 2a t/m 2f\n\n')
         f.write(f"- Studienummer cijfers: a={digits['a']}, b={digits['b']}, c={digits['c']}, d={digits['d']}, e={digits['e']}, f={digits['f']}, g={digits['g']}.\n")
         f.write(f"- Voor vraag 2 wordt f gebruikt: f={f_digit} -> t_p,eq={tp_mm:.1f} mm ({tp:.4f} m).\n\n")
+
         f.write('## 2a) Schuifoppervlak As\n')
+        f.write('- Verticale delen leveren de grootste bijdrage aan schuifstijfheid, omdat de schuifspanning/afschuifstroom in een slanke doorsnede vooral via web-achtige verticale platen loopt; deck en bodem dragen relatief minder bij in dit vereenvoudigde model.\n')
         f.write('- Formule: As(tp)=4·H·(2tp)=8Htp.\n')
         f.write(f'- As = {As:.2f} m².\n\n')
+
         f.write('## 2b) Hoogte neutrale as zn\n')
-        f.write('- Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie volgt z_n=H/2.\n')
-        f.write(f'- z_n = {z_n:.2f} m.\n\n')
+        f.write('- Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie van de doorsnede volgt direct z_n=H/2.\n')
+        f.write(f'- z_n = {z_n:.2f} m boven de basis.\n\n')
+
         f.write('## 2c) Oppervlaktetraagheidsmoment Ib\n')
         f.write('- Formule per deel: I_b = Σ(I_{eigen,i} + A_i d_i²).\n')
         f.write('- Horizontale delen (dek + bodem, elk):\n')
@@ -282,106 +268,34 @@ def solve_q2(digits, output_dir: Path):
         f.write(f'  - I_totaal per plaat = {I_h_total_each:.6f} m⁴\n')
         f.write('- Verticale delen (4 stuks, elk):\n')
         f.write(f'  - I_eigen = t h³/12 = {I_v_own:.6f} m⁴\n')
-        f.write(f'  - A d² = 0.000000 m⁴\n')
+        f.write(f'  - A d² = {I_v_shift:.6f} m⁴\n')
         f.write(f'  - I_totaal per plaat = {I_v_total_each:.6f} m⁴\n')
-        f.write(f'- Totaal I_b = {Ib:.4f} m⁴.\n')
+        f.write(f'- Totaal I_b = 2·I_h + 4·I_v = {Ib:.4f} m⁴.\n')
         f.write('- Grootste bijdrage: dek en bodem (grote afstand tot neutrale as -> grote A d²-term).\n\n')
+
         f.write('## 2d) Waarom vaak dikkere bodem/dek platen dan zijbeplating\n')
         f.write('- Bodem en dek liggen het verst van de neutrale as en dragen daardoor het meeste aan buigsterkte/stijfheid bij; diktevergroting daar is structureel het effectiefst.\n\n')
+
         f.write('## 2e) Functie verticale constructiedelen voor buigstijfheid\n')
         f.write('- Verticale delen koppelen dek en bodem, houden de doorsnede-vorm vast en leveren aanvullende I_b-bijdrage; vooral belangrijk voor schuifkracht-opname en voor het realiseren van samengestelde buigwerking van de hele doorsnede.\n\n')
+
         f.write('## 2f) Vergelijking met Damen Stan Pontoon tp\n')
         f.write('- In deze opdracht volgt t_p,eq = 7.5 mm uit tabel 4 (op basis van f).\n')
         f.write('- In praktijkdatasheets van pontons worden vaak verschillende plaatdiktes per locatie toegepast (bijv. dek/bodem zwaarder dan zijden), afhankelijk van sterkte, lokale belastingen, corrosiemarges, vermoeiing, en klasse-eisen.\n')
         f.write('- Dus vergelijkbaar in ordegrootte kan, maar exact gelijk hoeft niet omdat ontwerpdoelen en veiligheidsmarges verschillen.\n')
-
-    return {
-        "As": As,
-        "Ib": Ib,
-        "zn": z_n,
-        "tp_mm": tp_mm,
-    }
-
-
-def solve_q3(digits, q1, q2, output_dir: Path):
-    x = q1["x"]
-    Fs = q1["Fs"]
-    Mb = q1["Mb"]
-    Ib = q2["Ib"]
-    As = q2["As"]
-    zn = q2["zn"]
-    mat = pick_material(digits['e'])
-
-    E_MNm2 = mat["E_MPa"] * 1e6 / 1e6  # MPa -> Pa -> MN/m²
-    EI = E_MNm2 * Ib
-
-    # Euler-Bernoulli: w'' = M/(EI), with reference BCs theta(0)=0, w(0)=0
-    kappa = [m / EI for m in Mb]
-    theta_rad = cumulative_integral(kappa, x)
-    w_m = cumulative_integral(theta_rad, x)
-
-    theta_deg = [t * 180.0 / 3.141592653589793 for t in theta_rad]
-    w_mm = [w * 1000.0 for w in w_m]
-
-    # stresses at deck and bottom for largest |M|
-    i_max_m = max(range(len(Mb)), key=lambda i: abs(Mb[i]))
-    Mmax = Mb[i_max_m]
-    x_mmax = x[i_max_m]
-    y_deck = H - zn
-    y_bottom = zn
-
-    sigma_deck_MPa = (Mmax * y_deck / Ib)
-    sigma_bottom_MPa = (-Mmax * y_bottom / Ib)
-    sigma_crit = max(abs(sigma_deck_MPa), abs(sigma_bottom_MPa))
-    plastic = sigma_crit > mat["sigma_y_MPa"]
-
-    i_max_v = max(range(len(Fs)), key=lambda i: abs(Fs[i]))
-    Vmax = Fs[i_max_v]
-    tau_avg_MPa = abs(Vmax) / As
-
-    # plots
-    draw_multiplot_svg(output_dir / 'q3a_plots.svg', x,
-                       [theta_deg, w_mm],
-                       ['theta(x) [deg]', 'w(x) [mm]'],
-                       ['#004488', '#aa2222'])
-
-    with (output_dir / 'answer_q3a_d.md').open('w') as f:
-        f.write('# Uitwerking vraag 3a t/m 3d\n\n')
-        f.write(f"- Materiaal (op basis van e={digits['e']}): {mat['name']}, E={mat['E_MPa']:.0f} MPa, sigma_y={mat['sigma_y_MPa']:.0f} MPa.\n")
-        f.write(f"- Doorsnede: Ib={Ib:.4f} m⁴, As={As:.2f} m², zn={zn:.2f} m.\n\n")
-
-        f.write('## 3a) Hoekverdraaiing en vervorming\n')
-        f.write('- Gebruikte relaties: kappa=M/(EI), theta=∫kappa dx, w=∫theta dx met referentie BCs theta(0)=0 en w(0)=0.\n')
-        f.write(f"- max|theta| = {max(abs(v) for v in theta_deg):.4f} deg.\n")
-        f.write(f"- max|w| = {max(abs(v) for v in w_mm):.2f} mm.\n")
-        f.write('- Plotbestand: `q3a_plots.svg`.\n\n')
-
-        f.write('## 3b) Buigspanning bij grootste buigend moment\n')
-        f.write(f"- Grootste |Mb| = {Mmax:.2f} MNm op x={x_mmax:.2f} m.\n")
-        f.write(f"- sigma_dek = {sigma_deck_MPa:.0f} MPa, sigma_bodem = {sigma_bottom_MPa:.0f} MPa.\n")
-        f.write(f"- Vergelijking met vloeigrens: sigma_max={sigma_crit:.0f} MPa vs sigma_y={mat['sigma_y_MPa']:.0f} MPa -> {'PLASTISCH' if plastic else 'ELASTISCH'}.\n\n")
-
-        f.write('## 3c) Maatregel voor hogere veiligheid/duurzaamheid\n')
-        f.write('- Verhoog sectiestijfheid/sterkte waar het het meest effectief is (bijv. lokaal extra dek/bodem dikte of langsscheepse verstijvers), zodat spanningen dalen en levensduur toeneemt.\n\n')
-
-        f.write('## 3d) Gemiddelde schuifspanning\n')
-        f.write('- Formule: tau_avg = |Fs|/As.\n')
-        f.write(f"- Grootste |Fs| = {abs(Vmax):.2f} MN -> tau_avg = {tau_avg_MPa:.0f} MPa.\n")
-        f.write(f"- Vergelijking met buigspanning: tau_avg/sigma_max = {tau_avg_MPa/max(1e-9, sigma_crit):.3f}; schuifspanning is {'duidelijk kleiner' if tau_avg_MPa < 0.3*sigma_crit else 'zelfde orde'} dan buigspanning binnen dit balkmodel.\n")
 
 
 def main(studienummer="6470114", output_dir="outputs"):
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     digits = digits_from_studienummer(studienummer)
-    q1 = solve_q1(digits, out)
-    q2 = solve_q2(digits, out)
-    solve_q3(digits, q1, q2, out)
+    solve_q1(digits, out)
+    solve_q2(digits, out)
     print(f'Generated outputs in: {out}')
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Los vraag 1a t/m 1g, 2a t/m 2f en 3a t/m 3d op voor een gegeven studienummer.')
+    parser = argparse.ArgumentParser(description='Los vraag 1a t/m 1g en 2a t/m 2f op voor een gegeven studienummer.')
     parser.add_argument('--studienummer', default='6470114', help='Studienummer (standaard: 6470114)')
     parser.add_argument('--output-dir', default='outputs', help='Directory voor gegenereerde bestanden')
     args = parser.parse_args()
