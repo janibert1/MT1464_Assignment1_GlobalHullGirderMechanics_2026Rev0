@@ -7,4 +7,3 @@
 - Evenwichtcheck: ∫qdx=1.040e-11 MN, ∫(x-LCF)qdx=-5.164e-10 MNm.
 - Randvoorwaardencheck: Fs(L)=1.040e-11 MN, Mb(L)=4.500e+01 MNm.
 - Toegepaste kraan-geïnduceerde moment-jump bij x=45.00 m: +45.00 MNm.
-- Randvoorwaardencheck: Fs(L)=1.040e-11 MN, Mb(L)=-1.854e-04 MNm.
