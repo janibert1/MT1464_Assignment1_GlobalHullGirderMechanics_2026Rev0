@@ -95,6 +95,15 @@ def draw_multiplot_svg(filename: Path, x, series, labels, colors):
         f.write('</svg>\n')
 
 
+
+
+def apply_point_moment_jump(moment_curve, x, x0, delta_m):
+    """Add a step (jump) in bending moment at x0 representing a concentrated moment."""
+    out = []
+    for xi, mi in zip(x, moment_curve):
+        out.append(mi + (delta_m if xi >= x0 else 0.0))
+    return out
+
 def digits_from_studienummer(studienummer: str):
     s = ''.join(ch for ch in str(studienummer) if ch.isdigit())
     if len(s) < 7:
@@ -147,6 +156,12 @@ def solve_q1(digits, output_dir: Path):
     Fs = cumulative_integral(q, x)
     Mb = cumulative_integral(Fs, x)
 
+    # Crane-induced concentrated moment at crane location (requested jump in Mb).
+    crane_reach = 30.0  # [m], from assignment text
+    crane_swl = 1.5     # [MN], from assignment text
+    crane_moment = crane_swl * crane_reach  # [MNm]
+    Mb = apply_point_moment_jump(Mb, x, crane_x, crane_moment)
+
     beff_n = [B] * n
     LCF_n = trapz([x[i] * beff_n[i] for i in range(n)], x) / trapz(beff_n, x)
     I2n = trapz([((xi - LCF_n) ** 2) * beff_n[i] for i, xi in enumerate(x)], x)
@@ -157,6 +172,7 @@ def solve_q1(digits, output_dir: Path):
     qn = [buoy_n[i] - gnet[i] for i in range(n)]
     Fs_n = cumulative_integral(qn, x)
     Mb_n = cumulative_integral(Fs_n, x)
+    Mb_n = apply_point_moment_jump(Mb_n, x, crane_x, crane_moment)
 
     draw_multiplot_svg(output_dir / 'q1a_g_plots.svg', x,
                        [W, c, gnet, buoy, q, Fs, Mb],
@@ -195,6 +211,7 @@ def solve_q1(digits, output_dir: Path):
         f.write(f'- Afgeleide checks: max|dFs/dx-q|={max_dFs:.3e}, max|dMb/dx-Fs|={max_dMb:.3e}.\n')
         f.write(f'- Moonpool effect: max|Fs_met-Fs_zonder|={max(abs(Fs[i]-Fs_n[i]) for i in range(n)):.3f} MN; '
                 f'max|Mb_met-Mb_zonder|={max(abs(Mb[i]-Mb_n[i]) for i in range(n)):.3f} MNm.\n')
+        f.write(f'- Kraanmoment-jump in Mb op x={crane_x:.2f} m: +{crane_moment:.2f} MNm.\n')
 
     with (output_dir / 'answer_q1a_g.md').open('w') as f:
         f.write(f"# Uitwerking vraag 1a t/m 1g (studienummer {digits['a']}{digits['b']}{digits['c']}{digits['d']}{digits['e']}{digits['f']}{digits['g']})\n\n")
@@ -203,6 +220,7 @@ def solve_q1(digits, output_dir: Path):
         f.write(f"- Kernwaarden: T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta={ta:.2f} m, tf={tf:.2f} m.\n")
         f.write(f"- Evenwichtcheck: ∫qdx={eq_force:.3e} MN, ∫(x-LCF)qdx={eq_moment:.3e} MNm.\n")
         f.write(f"- Randvoorwaardencheck: Fs(L)={Fs[-1]:.3e} MN, Mb(L)={Mb[-1]:.3e} MNm.\n")
+        f.write(f"- Toegepaste kraan-geïnduceerde moment-jump bij x={crane_x:.2f} m: +{crane_moment:.2f} MNm.\n")
 
 
 def solve_q2(digits, output_dir: Path):

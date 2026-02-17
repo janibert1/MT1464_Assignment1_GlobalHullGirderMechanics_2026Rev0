@@ -33,3 +33,5 @@ Generated files:
 - The script derives digits `a..g` from the supplied studienummer.
 - Q1 uses digit `g` according to Table 2/3 mappings.
 - Q2 uses digit `f` for `t_p,eq` according to Table 4.
+
+- Q1 bending moment now includes a crane-induced point moment jump at the crane location: `M_crane = SWL * reach = 1.5 * 30 = 45 MNm` (positive jump).
