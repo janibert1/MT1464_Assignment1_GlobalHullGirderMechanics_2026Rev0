@@ -4,12 +4,15 @@
 - Voor vraag 2 wordt f gebruikt: f=1 -> t_p,eq=7.5 mm (0.0075 m).
 
 ## 2a) Schuifoppervlak As
+- Verticale delen leveren de grootste bijdrage aan schuifstijfheid, omdat de schuifspanning/afschuifstroom in een slanke doorsnede vooral via web-achtige verticale platen loopt; deck en bodem dragen relatief minder bij in dit vereenvoudigde model.
 - Formule: As(tp)=4·H·(2tp)=8Htp.
 - As = 0.93 m².
 
 ## 2b) Hoogte neutrale as zn
 - Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie volgt z_n=H/2.
 - z_n = 7.75 m.
+- Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie van de doorsnede volgt direct z_n=H/2.
+- z_n = 7.75 m boven de basis.
 
 ## 2c) Oppervlaktetraagheidsmoment Ib
 - Formule per deel: I_b = Σ(I_{eigen,i} + A_i d_i²).
@@ -22,6 +25,7 @@
   - A d² = 0.000000 m⁴
   - I_totaal per plaat = 4.654844 m⁴
 - Totaal I_b = 129.9037 m⁴.
+- Totaal I_b = 2·I_h + 4·I_v = 129.9037 m⁴.
 - Grootste bijdrage: dek en bodem (grote afstand tot neutrale as -> grote A d²-term).
 
 ## 2d) Waarom vaak dikkere bodem/dek platen dan zijbeplating

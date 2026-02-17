@@ -4,6 +4,7 @@ This repository contains the assignment PDFs and a reproducible Python solver fo
 - **Question 1a–1g** (with a dedicated re-check report for 1a–1f), and
 - **Question 2a–2f**, and
 - **Question 3a–3d**.
+- **Question 2a–2f**.
 
 The current default setup is for studienummer **6470114**.
 
@@ -25,8 +26,6 @@ Generated files:
 - `outputs/answer_q1a_g.md`
 - `outputs/check_q1a_f.md`
 - `outputs/answer_q2a_f.md`
-- `outputs/answer_q3a_d.md`
-- `outputs/q3a_plots.svg`
 - `outputs/q1a_g_data.csv`
 - `outputs/q1a_g_plots.svg`
 - `outputs/q1f_compare.svg`

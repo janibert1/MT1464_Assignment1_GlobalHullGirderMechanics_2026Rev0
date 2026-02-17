@@ -7,3 +7,6 @@
 - Afgeleide checks: max|dFs/dx-q|=2.277e-04, max|dMb/dx-Fs|=2.127e-02.
 - Moonpool effect: max|Fs_met-Fs_zonder|=1.844 MN; max|Mb_met-Mb_zonder|=54.589 MNm.
 - Kraanmoment-jump in Mb op x=45.00 m: +45.00 MNm.
+- Randvoorwaarden: Fs(0)=0.000e+00, Mb(0)=0.000e+00, Fs(L)=1.040e-11, Mb(L)=-1.854e-04.
+- Afgeleide checks: max|dFs/dx-q|=2.277e-04, max|dMb/dx-Fs|=2.127e-02.
+- Moonpool effect: max|Fs_met-Fs_zonder|=1.844 MN; max|Mb_met-Mb_zonder|=54.589 MNm.
