@@ -2,6 +2,8 @@
 
 This repository contains the assignment PDFs and a reproducible Python solver for:
 - **Question 1a–1g** (with a dedicated re-check report for 1a–1f), and
+- **Question 2a–2f**, and
+- **Question 3a–3d**.
 - **Question 2a–2f**.
 
 The current default setup is for studienummer **6470114**.

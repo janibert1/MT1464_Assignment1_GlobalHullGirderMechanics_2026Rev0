@@ -9,6 +9,8 @@
 - As = 0.93 m².
 
 ## 2b) Hoogte neutrale as zn
+- Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie volgt z_n=H/2.
+- z_n = 7.75 m.
 - Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie van de doorsnede volgt direct z_n=H/2.
 - z_n = 7.75 m boven de basis.
 
@@ -22,6 +24,7 @@
   - I_eigen = t h³/12 = 4.654844 m⁴
   - A d² = 0.000000 m⁴
   - I_totaal per plaat = 4.654844 m⁴
+- Totaal I_b = 129.9037 m⁴.
 - Totaal I_b = 2·I_h + 4·I_v = 129.9037 m⁴.
 - Grootste bijdrage: dek en bodem (grote afstand tot neutrale as -> grote A d²-term).
 
