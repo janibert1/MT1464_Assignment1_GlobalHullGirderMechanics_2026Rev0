@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import argparse
 
 RHO = 1025.0
 G = 9.81
@@ -88,25 +87,7 @@ def draw_multiplot_svg(filename, x, series, labels, colors):
         f.write('</svg>\n')
 
 
-def digits_from_studienummer(studienummer: str):
-    s = ''.join(ch for ch in str(studienummer) if ch.isdigit())
-    if len(s) < 7:
-        raise ValueError("Studienummer moet minstens 7 cijfers hebben.")
-    vals = [int(ch) for ch in s[-7:]]
-    return {
-        'a': vals[0],
-        'b': vals[1],
-        'c': vals[2],
-        'd': vals[3],
-        'e': vals[4],
-        'f': vals[5],
-        'g': vals[6],
-    }
-
-
-def main(studienummer="6470114"):
-    digits = digits_from_studienummer(studienummer)
-    g_digit = digits['g']
+def main(g_digit=4):
     p = pick_params(g_digit)
     Lm, Bm, xm = moonpool(g_digit, p.L)
     n = 3001
@@ -192,9 +173,7 @@ def main(studienummer="6470114"):
     eq_moment = trapz([(x[i] - LCF) * q[i] for i in range(n)], x)
 
     with open('answer_q1a_g.md', 'w') as f:
-        f.write(f"# Uitwerking vraag 1a t/m 1g (studienummer {studienummer})\n\n")
-        f.write(f"- Afgeleide cijfers: a={digits['a']}, b={digits['b']}, c={digits['c']}, d={digits['d']}, e={digits['e']}, f={digits['f']}, g={digits['g']}.\n")
-        f.write(f"- Voor vraag 1a t/m 1g wordt in de opgave alleen cijfer g gebruikt, dus g = {g_digit}.\n\n")
+        f.write(f"# Uitwerking vraag 1a t/m 1g (aanname cijfer g = {g_digit})\n\n")
         f.write("## 1a\n")
         f.write("- W(x), c(x), g(x)=W(x)+c(x) zijn berekend per segment met expliciete puntlastbijdrage van de kraan (eigen gewicht in W, SWL in c).\n")
         f.write("- Data staat in `q1a_g_data.csv`; figuren in `q1a_g_plots.svg`.\n\n")
@@ -222,7 +201,4 @@ def main(studienummer="6470114"):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Los vraag 1a t/m 1g op voor een gegeven studienummer.')
-    parser.add_argument('--studienummer', default='6470114', help='Studienummer (standaard: 6470114)')
-    args = parser.parse_args()
-    main(args.studienummer)
+    main(4)

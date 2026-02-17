@@ -1,7 +1,4 @@
-# Uitwerking vraag 1a t/m 1g (studienummer 6470114)
-
-- Afgeleide cijfers: a=6, b=4, c=7, d=0, e=1, f=1, g=4.
-- Voor vraag 1a t/m 1g wordt in de opgave alleen cijfer g gebruikt, dus g = 4.
+# Uitwerking vraag 1a t/m 1g (aanname cijfer g = 4)
 
 ## 1a
 - W(x), c(x), g(x)=W(x)+c(x) zijn berekend per segment met expliciete puntlastbijdrage van de kraan (eigen gewicht in W, SWL in c).
