@@ -184,8 +184,8 @@ def solve_q1(digits, output_dir: Path):
     a = Wtot * (LCG - LCF) / (RHO_G_MN * I2)
 
     T = [T0 + a * (xi - LCF) for xi in x]
-    ta = T0 + a * (0 - LCF)
-    tf = T0 + a * (p.L - LCF)
+    ta = a * (0 - LCF)
+    tf = a * (p.L - LCF)
 
     buoy = [RHO_G_MN * beff[i] * T[i] for i in range(n)]
     # q excludes Dirac point loads; concentrated loads are applied as jumps in Fs.
@@ -214,8 +214,12 @@ def solve_q1(digits, output_dir: Path):
     Mb_n = cumulative_integral(Fs_n, x)
     Mb_n = apply_point_moment_jump(Mb_n, x, crane_x, crane_moment)
 
+    W_signed = [-wi for wi in W]
+    c_signed = [-ci for ci in c]
+    g_signed = [-gi for gi in gnet]
+
     draw_multiplot(output_dir / 'q1a_g_plots.png', x,
-                       [W, c, gnet, buoy, q, Fs, Mb],
+                       [W_signed, c_signed, g_signed, buoy, q, Fs, Mb],
                        ['W(x) [MN/m]', 'c(x) [MN/m]', 'g(x) [MN/m]', 'p(x) [MN/m]', 'q(x) [MN/m]', 'Fs(x) [MN]', 'Mb(x) [MNm]'],
                        ['#0055aa', '#aa5500', '#228833', '#9933cc', '#cc2222', '#006666', '#444444'])
 
@@ -224,7 +228,7 @@ def solve_q1(digits, output_dir: Path):
     with (output_dir / 'q1a_g_data.csv').open('w') as f:
         f.write('x,W,c,g,p,q,Fs,Mb,Fs_nomoon,Mb_nomoon\n')
         for i in range(n):
-            f.write(f"{x[i]:.6f},{W[i]:.6f},{c[i]:.6f},{gnet[i]:.6f},{buoy[i]:.6f},{q[i]:.6f},{Fs[i]:.6f},{Mb[i]:.6f},{Fs_n[i]:.6f},{Mb_n[i]:.6f}\n")
+            f.write(f"{x[i]:.6f},{W_signed[i]:.6f},{c_signed[i]:.6f},{g_signed[i]:.6f},{buoy[i]:.6f},{q[i]:.6f},{Fs[i]:.6f},{Mb[i]:.6f},{Fs_n[i]:.6f},{Mb_n[i]:.6f}\n")
 
     eq_force_distributed = trapz(q, x)
     eq_force_total = eq_force_distributed - crane_total_point_load
@@ -244,7 +248,8 @@ def solve_q1(digits, output_dir: Path):
     with (output_dir / 'check_q1a_f.md').open('w') as f:
         f.write('# Check vraag 1a t/m 1f\n\n')
         f.write(f'- g={g_digit}, L={p.L:.2f} m, W_const={p.W_const:.2f} MN/m, c3={p.c3:.2f} MN/m.\n')
-        f.write(f'- T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta={ta:.2f} m, tf={tf:.2f} m.\n')
+        f.write(f'- T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta(trim)={ta:.2f} m, tf(trim)={tf:.2f} m.\n')
+        f.write('- Notatie: t_a = voor; t_f = achter.\n')
         f.write(f'- Kraan puntlasten op x={crane_x:.2f} m: eigengewicht={crane_deadweight:.2f} MN, SWL={crane_swl:.2f} MN.\n')
         f.write(f'- Evenwicht (incl. puntlasten): ∫qdx-P={eq_force_total:.3e} MN; ∫(x-LCF)qdx-P(xc-LCF)={eq_moment_total:.3e} MNm.\n')
         f.write(f'- Randvoorwaarden: Fs(0)={Fs[0]:.3e}, Mb(0)={Mb[0]:.3e}, Fs(L)={Fs[-1]:.3e}, Mb(L)={Mb[-1]:.3e}.\n')
@@ -257,7 +262,8 @@ def solve_q1(digits, output_dir: Path):
         f.write(f"# Uitwerking vraag 1a t/m 1g (studienummer {digits['a']}{digits['b']}{digits['c']}{digits['d']}{digits['e']}{digits['f']}{digits['g']})\n\n")
         f.write(f"- Afgeleide cijfers: a={digits['a']}, b={digits['b']}, c={digits['c']}, d={digits['d']}, e={digits['e']}, f={digits['f']}, g={digits['g']}.\n")
         f.write("- Voor vraag 1a t/m 1g wordt alleen cijfer g gebruikt.\n\n")
-        f.write(f"- Kernwaarden: T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta={ta:.2f} m, tf={tf:.2f} m.\n")
+        f.write(f"- Kernwaarden: T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta(trim)={ta:.2f} m, tf(trim)={tf:.2f} m.\n")
+        f.write("- Notatie: t_a = voor; t_f = achter.\n")
         f.write(f"- Kraan gemodelleerd als puntlasten op x={crane_x:.2f} m: 2.00 MN (eigengewicht in W) + 1.50 MN (SWL in c).\n")
         f.write(f"- Evenwichtcheck (incl. puntlasten): ∫qdx-P={eq_force_total:.3e} MN, ∫(x-LCF)qdx-P(xc-LCF)={eq_moment_total:.3e} MNm.\n")
         f.write(f"- Randvoorwaardencheck: Fs(L)={Fs[-1]:.3e} MN, Mb(L)={Mb[-1]:.3e} MNm.\n")
@@ -272,7 +278,8 @@ def solve_q2(digits, output_dir: Path):
     t_h = 4 * tp
     t_v = 2 * tp
 
-    As = 4 * H * t_v
+    n_vertical = 5
+    As = n_vertical * H * t_v
     z_n = H / 2.0
 
     A_h = B * t_h
@@ -285,7 +292,7 @@ def solve_q2(digits, output_dir: Path):
     I_v_shift = 0.0
     I_v_total_each = I_v_own
 
-    Ib = 2 * I_h_total_each + 4 * I_v_total_each
+    Ib = 2 * I_h_total_each + n_vertical * I_v_total_each
 
     with (output_dir / 'answer_q2a_f.md').open('w') as f:
         f.write('# Uitwerking vraag 2a t/m 2f\n\n')
@@ -294,7 +301,7 @@ def solve_q2(digits, output_dir: Path):
 
         f.write('## 2a) Schuifoppervlak As\n')
         f.write('- Verticale delen leveren de grootste bijdrage aan schuifstijfheid, omdat de schuifspanning/afschuifstroom in een slanke doorsnede vooral via web-achtige verticale platen loopt; deck en bodem dragen relatief minder bij in dit vereenvoudigde model.\n')
-        f.write('- Formule: As(tp)=4·H·(2tp)=8Htp.\n')
+        f.write(f'- Formule: As(tp)={n_vertical}·H·(2tp)={2*n_vertical}Htp.\n')
         f.write(f'- As = {As:.2f} m².\n\n')
 
         f.write('## 2b) Hoogte neutrale as zn\n')
@@ -307,11 +314,11 @@ def solve_q2(digits, output_dir: Path):
         f.write(f'  - I_eigen = b t³/12 = {I_h_own:.6f} m⁴\n')
         f.write(f'  - A d² = {I_h_shift:.6f} m⁴\n')
         f.write(f'  - I_totaal per plaat = {I_h_total_each:.6f} m⁴\n')
-        f.write('- Verticale delen (4 stuks, elk):\n')
+        f.write(f'- Verticale delen ({n_vertical} stuks, elk):\n')
         f.write(f'  - I_eigen = t h³/12 = {I_v_own:.6f} m⁴\n')
         f.write(f'  - A d² = {I_v_shift:.6f} m⁴\n')
         f.write(f'  - I_totaal per plaat = {I_v_total_each:.6f} m⁴\n')
-        f.write(f'- Totaal I_b = 2·I_h + 4·I_v = {Ib:.4f} m⁴.\n')
+        f.write(f'- Totaal I_b = 2·I_h + {n_vertical}·I_v = {Ib:.4f} m⁴.\n')
         f.write('- Grootste bijdrage: dek en bodem (grote afstand tot neutrale as -> grote A d²-term).\n\n')
 
         f.write('## 2d) Waarom vaak dikkere bodem/dek platen dan zijbeplating\n')

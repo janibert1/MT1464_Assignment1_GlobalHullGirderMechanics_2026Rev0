@@ -1,7 +1,7 @@
 # MT1464 – Opdracht 1
 ## Verslag
 ### Jan Albert Driessen
-### 6470115
+### 6470114
 
 ![Voorpagina](plaatjevoorkant.png)
 
@@ -13,14 +13,14 @@
 De gewichtscomponenten zijn opgesteld als:
 
 $$
-W(x)=W_{\mathrm{const}} + P_{\mathrm{kraan}}\,\delta(x-x_c),\qquad
-c(x)=c_{\mathrm{seg}}(x)+P_{\mathrm{SWL}}\,\delta(x-x_c),
+W(x)=-\left(W_{\mathrm{const}} + P_{\mathrm{kraan}}\,\delta(x-x_c)\right),\qquad
+c(x)=-\left(c_{\mathrm{seg}}(x)+P_{\mathrm{SWL}}\,\delta(x-x_c)\right),
 $$
 $$
 g(x)=W(x)+c(x).
 $$
 
-Met $P_{\mathrm{kraan}}=2.0\ \mathrm{MN}$, $P_{\mathrm{SWL}}=1.5\ \mathrm{MN}$ en $x_c=72.50\ \mathrm{m}$.
+Met $P_{\mathrm{kraan}}=2.0\ \mathrm{MN}$, $P_{\mathrm{SWL}}=1.5\ \mathrm{MN}$ en $x_c=45.00\ \mathrm{m}$.
 
 ![Vraag 1a gewichtsverdelingen](q1a_weights.png)
 
@@ -32,9 +32,9 @@ A_{wp}=\int_0^L b_{eff}(x)\,dx,\quad
 LCF=\frac{\int_0^L x\,b_{eff}(x)\,dx}{A_{wp}}
 $$
 $$
-W_{tot}=\int_0^L g(x)\,dx + P_{\mathrm{kraan}}+P_{\mathrm{SWL}},
+W_{tot}=\int_0^L -g(x)\,dx + P_{\mathrm{kraan}}+P_{\mathrm{SWL}},
 \quad
-LCG=\frac{\int_0^L x\,g(x)\,dx + x_c(P_{\mathrm{kraan}}+P_{\mathrm{SWL}})}{W_{tot}}
+LCG=\frac{\int_0^L x\,(-g(x))\,dx + x_c(P_{\mathrm{kraan}}+P_{\mathrm{SWL}})}{W_{tot}}
 $$
 $$
 T_0=\frac{W_{tot}}{\rho_w g A_{wp}},
@@ -44,15 +44,16 @@ T(x)=T_0+a(x-LCF),
 a=\frac{W_{tot}(LCG-LCF)}{\rho_w g I_2}
 $$
 $$
-t_a=T(0),\qquad t_f=T(L).
+t(x)=a(x-LCF),\qquad t_a=t(0),\qquad t_f=t(L).
 $$
 
 Resultaten (afgerond op 2 decimalen):  
-- $T=10.34\ \mathrm{m}$  
-- $LCF=72.13\ \mathrm{m}$  
-- $LCG=66.50\ \mathrm{m}$  
-- $t_a=12.73\ \mathrm{m}$  
-- $t_f=7.92\ \mathrm{m}$
+- $T=8.89\ \mathrm{m}$  
+- $LCF=67.39\ \mathrm{m}$  
+- $LCG=61.81\ \mathrm{m}$  
+- $t_a=2.18\ \mathrm{m}$  
+- $t_f=-2.18\ \mathrm{m}$
+- Notatie: $t_a$ = voor; $t_f$ = achter.
 
 ### 1c
 Drijfvermogenverdeling:
@@ -67,7 +68,7 @@ $$
 Resultante vlakwaterbelasting:
 
 $$
-q(x)=p(x)-g_{dist}(x)
+q(x)=p(x)+g_{dist}(x)
 $$
 
 met evenwichtscontrole inclusief puntlasten:
@@ -80,8 +81,8 @@ $$
 $$
 
 Numeriek:  
-- krachtsevenwicht: -1.704e-08\ \mathrm{MN}  
-- momentevenwicht: 2.826e-05\ \mathrm{MNm}
+- krachtsevenwicht: 3.025e-07\ \mathrm{MN}  
+- momentevenwicht: 5.617e-06\ \mathrm{MNm}
 
 ![Vraag 1d resultante belasting](q1d_q.png)
 
@@ -106,8 +107,8 @@ Vergelijking met/zonder moonpool toont lokaal sterkere variatie bij moonpool doo
 Maximaal verschil:
 
 $$
-\max|F_{s,met}-F_{s,zonder}|=2.017\ \mathrm{MN},\qquad
-\max|M_{b,met}-M_{b,zonder}|=38.585\ \mathrm{MNm}.
+\max|F_{s,met}-F_{s,zonder}|=1.842\ \mathrm{MN},\qquad
+\max|M_{b,met}-M_{b,zonder}|=54.533\ \mathrm{MNm}.
 $$
 
 ![Vraag 1f vergelijking moonpool](q1f_compare_overlay.png)
@@ -133,13 +134,13 @@ De numerieke checks op deze relaties zijn uitgevoerd en klein.
 Verticale delen domineren schuifstijfheid, omdat schuif vooral via web-achtige platen loopt.
 
 $$
-A_s=4H(2t_p)=8Ht_p
+A_s=5H(2t_p)=10Ht_p
 $$
 
 Met $t_p=7.5\ \mathrm{mm}$:
 
 $$
-A_s=0.93\ \mathrm{m^2}
+A_s=1.16\ \mathrm{m^2}
 $$
 
 ### 2b
@@ -173,7 +174,7 @@ $$
 Totaal:
 
 $$
-I_b=2I_{h,tot}+4I_{v,tot}=129.9037\ \mathrm{m^4}
+I_b=2I_{h,tot}+5I_{v,tot}=134.5586\ \mathrm{m^4}
 $$
 
 ### 2d
@@ -206,12 +207,12 @@ waarbij een lineaire rigid-body component is verwijderd zodat $w(0)=w(L)=0$.
 Resultaten:
 
 $$
-\varphi_{\max}=0.0867^\circ,\quad
-\varphi_{\min}=-0.0908^\circ
+\varphi_{\max}=0.0482^\circ,\quad
+\varphi_{\min}=-0.0479^\circ
 $$
 $$
 w_{\max}=0.00\ \mathrm{mm},\quad
-w_{\min}=-77.79\ \mathrm{mm}
+w_{\min}=-38.34\ \mathrm{mm}
 $$
 
 ![Vraag 3a hoekverdraaiing](q3a_phi.png)
@@ -225,13 +226,13 @@ $$
 \sigma_{b,\max}=\frac{|M_{b,\max}|\,z_{\max}}{I_b}
 $$
 
-met $|M_{b,\max}|=1129.85\ \mathrm{MNm}$ op $x=72.50\ \mathrm{m}$ en $z_{\max}=H/2=7.75\ \mathrm{m}$:
+met $|M_{b,\max}|=611.76\ \mathrm{MNm}$ op $x=69.17\ \mathrm{m}$ en $z_{\max}=H/2=7.75\ \mathrm{m}$:
 
 $$
-\sigma_{b,\max}=67\ \mathrm{MPa}
+\sigma_{b,\max}=35\ \mathrm{MPa}
 $$
 
-Vergelijking met vloeigrens: $67 < 235\ \mathrm{MPa}$.  
+Vergelijking met vloeigrens: $35 < 235\ \mathrm{MPa}$.  
 Er treedt geen plastisch gedrag op.
 
 ### 3c
@@ -244,11 +245,11 @@ $$
 \tau_s=\frac{|F_{s,\max}|}{A_s}
 $$
 
-met $|F_{s,\max}|=26.41\ \mathrm{MN}$ op $x=24.17\ \mathrm{m}$:
+met $|F_{s,\max}|=17.66\ \mathrm{MN}$ op $x=22.50\ \mathrm{m}$:
 
 $$
-\tau_s=28\ \mathrm{MPa}
+\tau_s=15\ \mathrm{MPa}
 $$
 
-Vergelijking: $\tau_s\approx 28\ \mathrm{MPa}$ versus $\sigma_{b,\max}\approx 67\ \mathrm{MPa}$.  
+Vergelijking: $\tau_s\approx 15\ \mathrm{MPa}$ versus $\sigma_{b,\max}\approx 35\ \mathrm{MPa}$.  
 Deze zijn van dezelfde orde, maar buiging domineert de extreme spanningen doordat $M_b$ piekt waar afstand tot neutrale as maximaal doorwerkt.

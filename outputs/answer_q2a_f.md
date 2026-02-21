@@ -1,12 +1,12 @@
 # Uitwerking vraag 2a t/m 2f
 
-- Studienummer cijfers: a=6, b=4, c=7, d=0, e=1, f=1, g=5.
+- Studienummer cijfers: a=6, b=4, c=7, d=0, e=1, f=1, g=4.
 - Voor vraag 2 wordt f gebruikt: f=1 -> t_p,eq=7.5 mm (0.0075 m).
 
 ## 2a) Schuifoppervlak As
 - Verticale delen leveren de grootste bijdrage aan schuifstijfheid, omdat de schuifspanning/afschuifstroom in een slanke doorsnede vooral via web-achtige verticale platen loopt; deck en bodem dragen relatief minder bij in dit vereenvoudigde model.
-- Formule: As(tp)=4·H·(2tp)=8Htp.
-- As = 0.93 m².
+- Formule: As(tp)=5·H·(2tp)=10Htp.
+- As = 1.16 m².
 
 ## 2b) Hoogte neutrale as zn
 - Formule: z_n = (Σ A_i z_i)/(Σ A_i). Door verticale symmetrie van de doorsnede volgt direct z_n=H/2.
@@ -18,11 +18,11 @@
   - I_eigen = b t³/12 = 0.000070 m⁴
   - A d² = 55.642109 m⁴
   - I_totaal per plaat = 55.642179 m⁴
-- Verticale delen (4 stuks, elk):
+- Verticale delen (5 stuks, elk):
   - I_eigen = t h³/12 = 4.654844 m⁴
   - A d² = 0.000000 m⁴
   - I_totaal per plaat = 4.654844 m⁴
-- Totaal I_b = 2·I_h + 4·I_v = 129.9037 m⁴.
+- Totaal I_b = 2·I_h + 5·I_v = 134.5586 m⁴.
 - Grootste bijdrage: dek en bodem (grote afstand tot neutrale as -> grote A d²-term).
 
 ## 2d) Waarom vaak dikkere bodem/dek platen dan zijbeplating

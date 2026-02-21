@@ -67,17 +67,19 @@ def compute_q1_metrics(digits, x, g, q):
     A_wp = trapz(beff, x)
     LCF = trapz([xi * bi for xi, bi in zip(x, beff)], x) / A_wp
 
+    # g(x) is represented as downward (negative) in outputs; use magnitude for hydrostatic balance.
+    g_mag = [abs(gi) for gi in g]
     P_crane = CRANE_DEADWEIGHT + CRANE_SWL
-    Wtot_distributed = trapz(g, x)
+    Wtot_distributed = trapz(g_mag, x)
     Wtot = Wtot_distributed + P_crane
-    LCG = (trapz([xi * gi for xi, gi in zip(x, g)], x) + crane_x * P_crane) / Wtot
+    LCG = (trapz([xi * gi for xi, gi in zip(x, g_mag)], x) + crane_x * P_crane) / Wtot
 
     I0 = trapz(beff, x)
     I2 = trapz([((xi - LCF) ** 2) * bi for xi, bi in zip(x, beff)], x)
     T0 = Wtot / (RHO_G_MN * I0)
     a = Wtot * (LCG - LCF) / (RHO_G_MN * I2)
-    ta = T0 + a * (0.0 - LCF)
-    tf = T0 + a * (p.L - LCF)
+    ta = a * (0.0 - LCF)
+    tf = a * (p.L - LCF)
 
     eq_force_distributed = trapz(q, x)
     eq_force_total = eq_force_distributed - P_crane
@@ -110,7 +112,8 @@ def compute_q2_metrics(digits):
     t_h = 4 * tp
     t_v = 2 * tp
 
-    As = 4 * H * t_v
+    n_vertical = 5
+    As = n_vertical * H * t_v
     z_n = H / 2.0
 
     A_h = B * t_h
@@ -123,9 +126,10 @@ def compute_q2_metrics(digits):
     I_v_shift = 0.0
     I_v_total_each = I_v_own
 
-    Ib = 2 * I_h_total_each + 4 * I_v_total_each
+    Ib = 2 * I_h_total_each + n_vertical * I_v_total_each
 
     return {
+        "n_vertical": n_vertical,
         "tp_mm": tp_mm,
         "tp": tp,
         "t_h": t_h,
@@ -271,8 +275,8 @@ def render_markdown(name, studienummer, digits, q1, q2, q3, material, moonpool_d
 De gewichtscomponenten zijn opgesteld als:
 
 $$
-W(x)=W_{\\mathrm{const}} + P_{\\mathrm{kraan}}\\,\\delta(x-x_c),\\qquad
-c(x)=c_{\\mathrm{seg}}(x)+P_{\\mathrm{SWL}}\\,\\delta(x-x_c),
+W(x)=-\\left(W_{\\mathrm{const}} + P_{\\mathrm{kraan}}\\,\\delta(x-x_c)\\right),\\qquad
+c(x)=-\\left(c_{\\mathrm{seg}}(x)+P_{\\mathrm{SWL}}\\,\\delta(x-x_c)\\right),
 $$
 $$
 g(x)=W(x)+c(x).
@@ -290,9 +294,9 @@ A_{wp}=\\int_0^L b_{eff}(x)\\,dx,\\quad
 LCF=\\frac{\\int_0^L x\\,b_{eff}(x)\\,dx}{A_{wp}}
 $$
 $$
-W_{tot}=\\int_0^L g(x)\\,dx + P_{\\mathrm{kraan}}+P_{\\mathrm{SWL}},
+W_{tot}=\\int_0^L -g(x)\\,dx + P_{\\mathrm{kraan}}+P_{\\mathrm{SWL}},
 \\quad
-LCG=\\frac{\\int_0^L x\\,g(x)\\,dx + x_c(P_{\\mathrm{kraan}}+P_{\\mathrm{SWL}})}{W_{tot}}
+LCG=\\frac{\\int_0^L x\\,(-g(x))\\,dx + x_c(P_{\\mathrm{kraan}}+P_{\\mathrm{SWL}})}{W_{tot}}
 $$
 $$
 T_0=\\frac{W_{tot}}{\\rho_w g A_{wp}},
@@ -302,7 +306,7 @@ T(x)=T_0+a(x-LCF),
 a=\\frac{W_{tot}(LCG-LCF)}{\\rho_w g I_2}
 $$
 $$
-t_a=T(0),\\qquad t_f=T(L).
+t(x)=a(x-LCF),\\qquad t_a=t(0),\\qquad t_f=t(L).
 $$
 
 Resultaten (afgerond op 2 decimalen):  
@@ -311,6 +315,7 @@ Resultaten (afgerond op 2 decimalen):
 - $LCG=__LCG__\\ \\mathrm{m}$  
 - $t_a=__TA__\\ \\mathrm{m}$  
 - $t_f=__TF__\\ \\mathrm{m}$
+- Notatie: $t_a$ = voor; $t_f$ = achter.
 
 ### 1c
 Drijfvermogenverdeling:
@@ -325,7 +330,7 @@ $$
 Resultante vlakwaterbelasting:
 
 $$
-q(x)=p(x)-g_{dist}(x)
+q(x)=p(x)+g_{dist}(x)
 $$
 
 met evenwichtscontrole inclusief puntlasten:
@@ -391,7 +396,7 @@ De numerieke checks op deze relaties zijn uitgevoerd en klein.
 Verticale delen domineren schuifstijfheid, omdat schuif vooral via web-achtige platen loopt.
 
 $$
-A_s=4H(2t_p)=8Ht_p
+A_s=__N_VERTICAL__H(2t_p)=__AS_FACTOR__Ht_p
 $$
 
 Met $t_p=__TP_MM__\\ \\mathrm{mm}$:
@@ -431,7 +436,7 @@ $$
 Totaal:
 
 $$
-I_b=2I_{h,tot}+4I_{v,tot}=__IB__\\ \\mathrm{m^4}
+I_b=2I_{h,tot}+__N_VERTICAL__I_{v,tot}=__IB__\\ \\mathrm{m^4}
 $$
 
 ### 2d
@@ -532,6 +537,8 @@ Deze zijn van dezelfde orde, maar buiging domineert de extreme spanningen doorda
         "__MOONPOOL_DFS__": f"{moonpool_dfs:.3f}",
         "__MOONPOOL_DMB__": f"{moonpool_dmb:.3f}",
         "__TP_MM__": f"{q2['tp_mm']:.1f}",
+        "__N_VERTICAL__": str(q2["n_vertical"]),
+        "__AS_FACTOR__": str(2 * q2["n_vertical"]),
         "__AS__": f"{q2['As']:.2f}",
         "__ZN__": f"{q2['z_n']:.2f}",
         "__IH_OWN__": f"{q2['I_h_own']:.6f}",
@@ -584,6 +591,9 @@ if __name__ == "__main__":
     digits = digits_from_studienummer(studienummer)
     q1_csv = OUTPUT_DIR / "q1a_g_data.csv"
     x, W, c, g, p, q, Fs, Mb, Fs_n, Mb_n = load_q1_data(q1_csv)
+    W_plot = [-abs(v) for v in W]
+    c_plot = [-abs(v) for v in c]
+    g_plot = [-abs(v) for v in g]
 
     q1 = compute_q1_metrics(digits, x, g, q)
     q2 = compute_q2_metrics(digits)
@@ -591,7 +601,7 @@ if __name__ == "__main__":
     q3 = compute_q3_metrics(x, Fs, Mb, q2["As"], q2["Ib"], material)
 
     make_report_figures(
-        ASSETS_DIR, x, W, c, g, p, q, Fs, Mb, Fs_n, Mb_n, q1["crane_x"], q3["phi_deg"], q3["w_mm"]
+        ASSETS_DIR, x, W_plot, c_plot, g_plot, p, q, Fs, Mb, Fs_n, Mb_n, q1["crane_x"], q3["phi_deg"], q3["w_mm"]
     )
 
     cover_candidates = [
