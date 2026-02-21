@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 import argparse
 from pathlib import Path
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 RHO = 1025.0
 G = 9.81
@@ -46,10 +50,6 @@ def moonpool(g_digit: int, L: float):
     return Lm, Bm, xm
 
 
-def delta_rect(x, x0, width):
-    return (1.0 / width) if abs(x - x0) <= width / 2 else 0.0
-
-
 def trapz(y, x):
     s = 0.0
     for i in range(1, len(x)):
@@ -64,35 +64,58 @@ def cumulative_integral(y, x):
     return out
 
 
-def draw_multiplot_svg(filename: Path, x, series, labels, colors):
-    w, h = 1100, 1700
-    margin_l, margin_r = 70, 20
-    margin_t, margin_b = 30, 30
+def draw_multiplot(filename: Path, x, series, labels, colors):
     n = len(series)
-    panel_h = (h - margin_t - margin_b) / n
+    fig, axes = plt.subplots(n, 1, figsize=(11, max(2.5 * n, 8)), sharex=True)
+    if n == 1:
+        axes = [axes]
 
-    def xmap(xv):
-        return margin_l + (xv - x[0]) / (x[-1] - x[0]) * (w - margin_l - margin_r)
+    for k, (ax, y) in enumerate(zip(axes, series)):
+        color = colors[k % len(colors)]
+        ax.plot(x, y, color=color, linewidth=1.2)
+        ax.fill_between(x, 0.0, y, color=color, alpha=0.18)
+        ymin, ymax = min(y), max(y)
+        if abs(ymax - ymin) < 1e-12:
+            ymin -= 0.5
+            ymax += 0.5
+        pad = 0.05 * (ymax - ymin)
+        ax.set_ylim(ymin - pad, ymax + pad)
+        ax.set_ylabel(labels[k], fontsize=9)
+        ax.grid(True, alpha=0.3)
 
-    with filename.open("w") as f:
-        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">\n')
-        f.write('<style>text{font-family:Arial;font-size:12px}.title{font-weight:bold}</style>\n')
-        for k, y in enumerate(series):
-            y0 = margin_t + k * panel_h
-            ymin, ymax = min(y), max(y)
-            if ymax - ymin < 1e-9:
-                ymax = ymin + 1.0
+    axes[-1].set_xlabel("x [m]")
+    fig.tight_layout()
+    fig.savefig(filename, dpi=180)
+    plt.close(fig)
 
-            def ymap(yv):
-                return y0 + panel_h - 20 - (yv - ymin) / (ymax - ymin) * (panel_h - 40)
 
-            f.write(f'<rect x="{margin_l}" y="{y0+10}" width="{w-margin_l-margin_r}" height="{panel_h-20}" fill="none" stroke="#ccc"/>\n')
-            pts = " ".join(f"{xmap(xi):.2f},{ymap(yi):.2f}" for xi, yi in zip(x, y))
-            f.write(f'<polyline points="{pts}" fill="none" stroke="{colors[k%len(colors)]}" stroke-width="1.2"/>\n')
-            f.write(f'<text x="{margin_l+5}" y="{y0+24}" class="title">{labels[k]}</text>\n')
-            f.write(f'<text x="10" y="{y0+24}">min {ymin:.2f}</text>\n')
-            f.write(f'<text x="10" y="{y0+40}">max {ymax:.2f}</text>\n')
-        f.write('</svg>\n')
+def draw_compare_overlay(filename: Path, x, Fs, Fs_n, Mb, Mb_n):
+    fig, axes = plt.subplots(2, 1, figsize=(11, 8), sharex=True)
+    panels = [
+        (axes[0], [(Fs, "Fs met moonpool [MN]", "#0055aa"), (Fs_n, "Fs zonder moonpool [MN]", "#dd8800")], "Fs [MN]"),
+        (axes[1], [(Mb, "Mb met moonpool [MNm]", "#228833"), (Mb_n, "Mb zonder moonpool [MNm]", "#cc2222")], "Mb [MNm]"),
+    ]
+
+    for ax, curves, ylabel in panels:
+        y_all = []
+        for y, label, color in curves:
+            ax.plot(x, y, color=color, linewidth=1.5, label=label)
+            ax.fill_between(x, 0.0, y, color=color, alpha=0.16)
+            y_all.extend(y)
+        ymin, ymax = min(y_all), max(y_all)
+        if abs(ymax - ymin) < 1e-12:
+            ymin -= 0.5
+            ymax += 0.5
+        pad = 0.05 * (ymax - ymin)
+        ax.set_ylim(ymin - pad, ymax + pad)
+        ax.set_ylabel(ylabel, fontsize=10)
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc="best", fontsize=9)
+
+    axes[-1].set_xlabel("x [m]")
+    fig.tight_layout()
+    fig.savefig(filename, dpi=180)
+    plt.close(fig)
 
 
 
@@ -103,6 +126,15 @@ def apply_point_moment_jump(moment_curve, x, x0, delta_m):
     for xi, mi in zip(x, moment_curve):
         out.append(mi + (delta_m if xi >= x0 else 0.0))
     return out
+
+
+def apply_point_force_jump(force_curve, x, x0, delta_f):
+    """Add a step (jump) in shear force at x0 representing a concentrated vertical force."""
+    out = []
+    for xi, fi in zip(x, force_curve):
+        out.append(fi + (delta_f if xi >= x0 else 0.0))
+    return out
+
 
 def digits_from_studienummer(studienummer: str):
     s = ''.join(ch for ch in str(studienummer) if ch.isdigit())
@@ -122,13 +154,16 @@ def solve_q1(digits, output_dir: Path):
     seg_len = p.L / 6
     c_vals = [2.0, 3.0, p.c3, 2.5, 2.0, 1.0]
     crane_x = 2 * seg_len if p.crane_transition == "2-3" else 3 * seg_len
-    spread = 0.2
+    crane_deadweight = 2.0  # [MN] concentrated crane self-weight
+    crane_swl = 1.5         # [MN] concentrated lifted load (SWL)
+    crane_total_point_load = crane_deadweight + crane_swl
 
     W, c, gnet, beff = [], [], [], []
     for xi in x:
         s = min(int(xi / seg_len), 5)
-        ci = c_vals[s] + 1.5 * delta_rect(xi, crane_x, spread)
-        wi = p.W_const + 2.0 * delta_rect(xi, crane_x, spread)
+        # Distributed baseline loads only; crane actions are handled as concentrated terms.
+        ci = c_vals[s]
+        wi = p.W_const
         gi = wi + ci
         in_moon = 1.0 if (xm - Lm / 2 <= xi <= xm + Lm / 2) else 0.0
         b = B - Bm * in_moon
@@ -139,8 +174,9 @@ def solve_q1(digits, output_dir: Path):
 
     A_wp = trapz(beff, x)
     LCF = trapz([x[i] * beff[i] for i in range(n)], x) / A_wp
-    Wtot = trapz(gnet, x)
-    LCG = trapz([x[i] * gnet[i] for i in range(n)], x) / Wtot
+    Wtot_distributed = trapz(gnet, x)
+    Wtot = Wtot_distributed + crane_total_point_load
+    LCG = (trapz([x[i] * gnet[i] for i in range(n)], x) + crane_x * crane_total_point_load) / Wtot
 
     I0 = trapz(beff, x)
     I2 = trapz([((xi - LCF) ** 2) * beff[i] for i, xi in enumerate(x)], x)
@@ -152,13 +188,15 @@ def solve_q1(digits, output_dir: Path):
     tf = T0 + a * (p.L - LCF)
 
     buoy = [RHO_G_MN * beff[i] * T[i] for i in range(n)]
+    # q excludes Dirac point loads; concentrated loads are applied as jumps in Fs.
     q = [buoy[i] - gnet[i] for i in range(n)]
     Fs = cumulative_integral(q, x)
+    Fs = apply_point_force_jump(Fs, x, crane_x, -crane_deadweight)
+    Fs = apply_point_force_jump(Fs, x, crane_x, -crane_swl)
     Mb = cumulative_integral(Fs, x)
 
     # Crane-induced concentrated moment at crane location (requested jump in Mb).
     crane_reach = 30.0  # [m], from assignment text
-    crane_swl = 1.5     # [MN], from assignment text
     crane_moment = crane_swl * crane_reach  # [MNm]
     Mb = apply_point_moment_jump(Mb, x, crane_x, crane_moment)
 
@@ -171,26 +209,27 @@ def solve_q1(digits, output_dir: Path):
     buoy_n = [RHO_G_MN * beff_n[i] * Tn[i] for i in range(n)]
     qn = [buoy_n[i] - gnet[i] for i in range(n)]
     Fs_n = cumulative_integral(qn, x)
+    Fs_n = apply_point_force_jump(Fs_n, x, crane_x, -crane_deadweight)
+    Fs_n = apply_point_force_jump(Fs_n, x, crane_x, -crane_swl)
     Mb_n = cumulative_integral(Fs_n, x)
     Mb_n = apply_point_moment_jump(Mb_n, x, crane_x, crane_moment)
 
-    draw_multiplot_svg(output_dir / 'q1a_g_plots.svg', x,
+    draw_multiplot(output_dir / 'q1a_g_plots.png', x,
                        [W, c, gnet, buoy, q, Fs, Mb],
                        ['W(x) [MN/m]', 'c(x) [MN/m]', 'g(x) [MN/m]', 'p(x) [MN/m]', 'q(x) [MN/m]', 'Fs(x) [MN]', 'Mb(x) [MNm]'],
                        ['#0055aa', '#aa5500', '#228833', '#9933cc', '#cc2222', '#006666', '#444444'])
 
-    draw_multiplot_svg(output_dir / 'q1f_compare.svg', x,
-                       [Fs, Fs_n, Mb, Mb_n],
-                       ['Fs met moonpool [MN]', 'Fs zonder moonpool [MN]', 'Mb met moonpool [MNm]', 'Mb zonder moonpool [MNm]'],
-                       ['#0055aa', '#dd8800', '#228833', '#cc2222'])
+    draw_compare_overlay(output_dir / 'q1f_compare.png', x, Fs, Fs_n, Mb, Mb_n)
 
     with (output_dir / 'q1a_g_data.csv').open('w') as f:
         f.write('x,W,c,g,p,q,Fs,Mb,Fs_nomoon,Mb_nomoon\n')
         for i in range(n):
             f.write(f"{x[i]:.6f},{W[i]:.6f},{c[i]:.6f},{gnet[i]:.6f},{buoy[i]:.6f},{q[i]:.6f},{Fs[i]:.6f},{Mb[i]:.6f},{Fs_n[i]:.6f},{Mb_n[i]:.6f}\n")
 
-    eq_force = trapz(q, x)
-    eq_moment = trapz([(x[i] - LCF) * q[i] for i in range(n)], x)
+    eq_force_distributed = trapz(q, x)
+    eq_force_total = eq_force_distributed - crane_total_point_load
+    eq_moment_distributed = trapz([(x[i] - LCF) * q[i] for i in range(n)], x)
+    eq_moment_total = eq_moment_distributed - crane_total_point_load * (crane_x - LCF)
     disc = [seg_len, 2 * seg_len, 3 * seg_len, 4 * seg_len, 5 * seg_len, crane_x, xm - Lm / 2, xm + Lm / 2]
 
     def smooth_idx(i):
@@ -206,7 +245,8 @@ def solve_q1(digits, output_dir: Path):
         f.write('# Check vraag 1a t/m 1f\n\n')
         f.write(f'- g={g_digit}, L={p.L:.2f} m, W_const={p.W_const:.2f} MN/m, c3={p.c3:.2f} MN/m.\n')
         f.write(f'- T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta={ta:.2f} m, tf={tf:.2f} m.\n')
-        f.write(f'- Evenwicht: ∫qdx={eq_force:.3e} MN; ∫(x-LCF)qdx={eq_moment:.3e} MNm.\n')
+        f.write(f'- Kraan puntlasten op x={crane_x:.2f} m: eigengewicht={crane_deadweight:.2f} MN, SWL={crane_swl:.2f} MN.\n')
+        f.write(f'- Evenwicht (incl. puntlasten): ∫qdx-P={eq_force_total:.3e} MN; ∫(x-LCF)qdx-P(xc-LCF)={eq_moment_total:.3e} MNm.\n')
         f.write(f'- Randvoorwaarden: Fs(0)={Fs[0]:.3e}, Mb(0)={Mb[0]:.3e}, Fs(L)={Fs[-1]:.3e}, Mb(L)={Mb[-1]:.3e}.\n')
         f.write(f'- Afgeleide checks: max|dFs/dx-q|={max_dFs:.3e}, max|dMb/dx-Fs|={max_dMb:.3e}.\n')
         f.write(f'- Moonpool effect: max|Fs_met-Fs_zonder|={max(abs(Fs[i]-Fs_n[i]) for i in range(n)):.3f} MN; '
@@ -218,7 +258,8 @@ def solve_q1(digits, output_dir: Path):
         f.write(f"- Afgeleide cijfers: a={digits['a']}, b={digits['b']}, c={digits['c']}, d={digits['d']}, e={digits['e']}, f={digits['f']}, g={digits['g']}.\n")
         f.write("- Voor vraag 1a t/m 1g wordt alleen cijfer g gebruikt.\n\n")
         f.write(f"- Kernwaarden: T={T0:.2f} m, LCF={LCF:.2f} m, LCG={LCG:.2f} m, ta={ta:.2f} m, tf={tf:.2f} m.\n")
-        f.write(f"- Evenwichtcheck: ∫qdx={eq_force:.3e} MN, ∫(x-LCF)qdx={eq_moment:.3e} MNm.\n")
+        f.write(f"- Kraan gemodelleerd als puntlasten op x={crane_x:.2f} m: 2.00 MN (eigengewicht in W) + 1.50 MN (SWL in c).\n")
+        f.write(f"- Evenwichtcheck (incl. puntlasten): ∫qdx-P={eq_force_total:.3e} MN, ∫(x-LCF)qdx-P(xc-LCF)={eq_moment_total:.3e} MNm.\n")
         f.write(f"- Randvoorwaardencheck: Fs(L)={Fs[-1]:.3e} MN, Mb(L)={Mb[-1]:.3e} MNm.\n")
         f.write(f"- Toegepaste kraan-geïnduceerde moment-jump bij x={crane_x:.2f} m: +{crane_moment:.2f} MNm.\n")
 
@@ -285,8 +326,16 @@ def solve_q2(digits, output_dir: Path):
         f.write('- Dus vergelijkbaar in ordegrootte kan, maar exact gelijk hoeft niet omdat ontwerpdoelen en veiligheidsmarges verschillen.\n')
 
 
-def main(studienummer="6470114", output_dir="outputs"):
+def resolve_output_dir(output_dir: str) -> Path:
+    repo_root = Path(__file__).resolve().parents[1]
     out = Path(output_dir)
+    if not out.is_absolute():
+        out = repo_root / out
+    return out
+
+
+def main(studienummer="6470114", output_dir="outputs"):
+    out = resolve_output_dir(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     digits = digits_from_studienummer(studienummer)
     solve_q1(digits, out)
@@ -295,8 +344,10 @@ def main(studienummer="6470114", output_dir="outputs"):
 
 
 if __name__ == '__main__':
+    repo_root = Path(__file__).resolve().parents[1]
+    default_output = "output" if (repo_root / "output").exists() else "outputs"
     parser = argparse.ArgumentParser(description='Los vraag 1a t/m 1g en 2a t/m 2f op voor een gegeven studienummer.')
     parser.add_argument('--studienummer', default='6470114', help='Studienummer (standaard: 6470114)')
-    parser.add_argument('--output-dir', default='outputs', help='Directory voor gegenereerde bestanden')
+    parser.add_argument('--output-dir', default=default_output, help='Directory voor gegenereerde bestanden (relatief t.o.v. repo root)')
     args = parser.parse_args()
     main(args.studienummer, args.output_dir)

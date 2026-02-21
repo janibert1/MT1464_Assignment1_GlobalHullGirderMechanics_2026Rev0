@@ -1,6 +1,6 @@
 # Uitwerking vraag 2a t/m 2f
 
-- Studienummer cijfers: a=6, b=4, c=7, d=0, e=1, f=1, g=4.
+- Studienummer cijfers: a=6, b=4, c=7, d=0, e=1, f=1, g=5.
 - Voor vraag 2 wordt f gebruikt: f=1 -> t_p,eq=7.5 mm (0.0075 m).
 
 ## 2a) Schuifoppervlak As
